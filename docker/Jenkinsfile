@@ -1,0 +1,51 @@
+pipeline {
+    agent {
+        docker { image 'public.ecr.aws/docker/library/maven:3.9-sapmachine' }
+    }
+    stages {
+        stage('Source') {
+            steps {
+                sh 'mvn --version'
+                sh 'git --version'
+                git branch: 'main',
+                    url: 'https://github.com/LinkedInLearning/essential-jenkins-2468076.git'
+            }
+        }
+        stage('Debug Directory Structure') {
+            steps {
+                sh 'pwd'
+                sh 'ls -la'
+                sh 'ls -la Ch04 || echo "Ch04 not found"'
+                sh 'ls -la Ch04/04_03-docker-agent || echo "04_03-docker-agent not found"'
+                sh "ls -la ${env.WORKSPACE}/Ch04/04_03-docker-agent"
+            }
+        }
+
+        stage('Clean') {
+            steps {
+                echo "WORKSPACE is: ${env.WORKSPACE}"
+
+                dir("${env.WORKSPACE}/Ch04/04_03-docker-agent"){
+                    // Clean previous Maven cache in workspace (optional but helps avoid permission issues)
+                    sh 'rm -rf $WORKSPACE/.m2'
+                    // Run Maven using workspace-local repo
+                    sh 'mvn -Dmaven.repo.local=$WORKSPACE/.m2 clean install'
+                }
+            }
+        }
+        stage('Test') {
+            steps {
+                dir("${env.WORKSPACE}/Ch04/04_03-docker-agent"){
+                    sh 'mvn test'
+                }
+            }
+        }
+        stage('Package') {
+            steps {
+                dir("${env.WORKSPACE}/Ch04/04_03-docker-agent"){
+                    sh 'mvn package -DskipTests'
+                }
+            }
+        }
+    }
+}
